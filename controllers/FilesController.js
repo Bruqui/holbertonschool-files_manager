@@ -19,6 +19,25 @@ const formatFile = (doc) => ({
   parentId: doc.parentId,
 });
 
+// Backs both publish endpoints, which differ only by the flag they set.
+// `returnOriginal: false` is the driver v3 spelling of v4's `returnDocument: 'after'`.
+const setPublished = async (req, res, isPublic) => {
+  const user = await getUserFromToken(req);
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { id } = req.params;
+  if (!ObjectId.isValid(id)) return res.status(404).json({ error: 'Not found' });
+
+  const result = await dbClient.db.collection('files').findOneAndUpdate(
+    { _id: new ObjectId(id), userId: user._id },
+    { $set: { isPublic } },
+    { returnOriginal: false },
+  );
+  if (!result.value) return res.status(404).json({ error: 'Not found' });
+
+  return res.status(200).json(formatFile(result.value));
+};
+
 class FilesController {
   static async postUpload(req, res) {
     const user = await getUserFromToken(req);
@@ -104,6 +123,14 @@ class FilesController {
     ]).toArray();
 
     return res.status(200).json(files.map(formatFile));
+  }
+
+  static putPublish(req, res) {
+    return setPublished(req, res, true);
+  }
+
+  static putUnpublish(req, res) {
+    return setPublished(req, res, false);
   }
 }
 
