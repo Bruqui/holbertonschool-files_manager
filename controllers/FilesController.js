@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import Bull from 'bull';
 import mime from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
@@ -9,6 +10,9 @@ import getUserFromToken from '../utils/auth.mjs';
 const ACCEPTED_TYPES = ['folder', 'file', 'image'];
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 const PAGE_SIZE = 20;
+const THUMBNAIL_SIZES = ['500', '250', '100'];
+
+const fileQueue = new Bull('fileQueue');
 
 // Shapes a stored document for the API: _id becomes id, localPath stays private.
 const formatFile = (doc) => ({
@@ -83,6 +87,13 @@ class FilesController {
 
     const result = await files.insertOne(doc);
 
+    if (type === 'image') {
+      await fileQueue.add({
+        userId: user._id.toString(),
+        fileId: result.insertedId.toString(),
+      });
+    }
+
     return res.status(201).json(formatFile({ ...doc, _id: result.insertedId }));
   }
 
@@ -153,8 +164,19 @@ class FilesController {
       return res.status(400).json({ error: "A folder doesn't have content" });
     }
 
+    // `size` lands in a filesystem path, so only the three known widths are
+    // accepted -- anything else would let a request walk out of FOLDER_PATH.
+    const { size } = req.query;
+    let target = file.localPath;
+    if (size !== undefined) {
+      if (!THUMBNAIL_SIZES.includes(String(size))) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      target = `${file.localPath}_${size}`;
+    }
+
     try {
-      const content = await fs.readFile(file.localPath);
+      const content = await fs.readFile(target);
       return res.status(200)
         .type(mime.lookup(file.name) || 'application/octet-stream')
         .send(content);
