@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import mime from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db.mjs';
@@ -131,6 +132,35 @@ class FilesController {
 
   static putUnpublish(req, res) {
     return setPublished(req, res, false);
+  }
+
+  static async getFile(req, res) {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) return res.status(404).json({ error: 'Not found' });
+
+    const file = await dbClient.db.collection('files').findOne({ _id: new ObjectId(id) });
+    if (!file) return res.status(404).json({ error: 'Not found' });
+
+    // A public file is readable by anyone; otherwise only its owner may fetch it.
+    if (!file.isPublic) {
+      const user = await getUserFromToken(req);
+      if (!user || !file.userId.equals(user._id)) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+    }
+
+    if (file.type === 'folder') {
+      return res.status(400).json({ error: "A folder doesn't have content" });
+    }
+
+    try {
+      const content = await fs.readFile(file.localPath);
+      return res.status(200)
+        .type(mime.lookup(file.name) || 'application/octet-stream')
+        .send(content);
+    } catch (err) {
+      return res.status(404).json({ error: 'Not found' });
+    }
   }
 }
 
