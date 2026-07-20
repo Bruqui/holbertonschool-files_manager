@@ -4,7 +4,8 @@ import router from './routes/index';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
+// Base64 payloads inflate the body by ~33%, well past express' 100kb default.
+app.use(express.json({ limit: '10mb' }));
 app.use('/', router);
 
 app.listen(PORT, () => {
