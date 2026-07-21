@@ -6,20 +6,24 @@ import FilesController from '../controllers/FilesController';
 
 const router = Router();
 
-router.get('/status', AppController.getStatus);
-router.get('/stats', AppController.getStats);
+// Forward any async-handler rejection to the error middleware, so a thrown
+// error becomes a 500 response instead of a request that hangs forever.
+const wrap = (handler) => (req, res, next) => Promise.resolve(handler(req, res)).catch(next);
 
-router.post('/users', UsersController.postNew);
-router.get('/users/me', UsersController.getMe);
+router.get('/status', wrap(AppController.getStatus));
+router.get('/stats', wrap(AppController.getStats));
 
-router.get('/connect', AuthController.getConnect);
-router.get('/disconnect', AuthController.getDisconnect);
+router.post('/users', wrap(UsersController.postNew));
+router.get('/users/me', wrap(UsersController.getMe));
 
-router.post('/files', FilesController.postUpload);
-router.get('/files', FilesController.getIndex);
-router.get('/files/:id', FilesController.getShow);
-router.put('/files/:id/publish', FilesController.putPublish);
-router.put('/files/:id/unpublish', FilesController.putUnpublish);
-router.get('/files/:id/data', FilesController.getFile);
+router.get('/connect', wrap(AuthController.getConnect));
+router.get('/disconnect', wrap(AuthController.getDisconnect));
+
+router.post('/files', wrap(FilesController.postUpload));
+router.get('/files', wrap(FilesController.getIndex));
+router.get('/files/:id', wrap(FilesController.getShow));
+router.put('/files/:id/publish', wrap(FilesController.putPublish));
+router.put('/files/:id/unpublish', wrap(FilesController.putUnpublish));
+router.get('/files/:id/data', wrap(FilesController.getFile));
 
 export default router;
