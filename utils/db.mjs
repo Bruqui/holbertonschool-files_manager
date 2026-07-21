@@ -12,13 +12,20 @@ class DBClient {
     this.client = new MongoClient(`mongodb://${HOST}:${PORT}`, {
       useUnifiedTopology: true,
     });
-    this.client.connect()
+    // Kept so callers (server.js, worker.js) can await a ready connection
+    // before serving requests -- otherwise a query can hit a null `db` and
+    // throw inside an async handler, which Express 4 turns into a hung request.
+    this.connectPromise = this.client.connect()
       .then(() => {
         this.db = this.client.db(DATABASE);
       })
       .catch((err) => {
         console.error(`MongoDB client error: ${err.message}`);
       });
+  }
+
+  async whenConnected() {
+    await this.connectPromise;
   }
 
   isAlive() {

@@ -7,7 +7,7 @@ import dbClient from './utils/db';
 const fileQueue = new Bull('fileQueue');
 const THUMBNAIL_WIDTHS = [500, 250, 100];
 
-fileQueue.process(async (job) => {
+const processJob = async (job) => {
   const { fileId, userId } = job.data;
 
   if (!fileId) throw new Error('Missing fileId');
@@ -26,6 +26,10 @@ fileQueue.process(async (job) => {
     const thumbnail = await imageThumbnail(file.localPath, { width });
     await fs.writeFile(`${file.localPath}_${width}`, thumbnail);
   }));
-});
+};
 
-console.log('File worker started, waiting for jobs');
+// Wait for Mongo before consuming jobs so a job never hits a null db.
+dbClient.whenConnected().then(() => {
+  fileQueue.process(processJob);
+  console.log('File worker started, waiting for jobs');
+});
