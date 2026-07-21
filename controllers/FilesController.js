@@ -12,7 +12,14 @@ const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';
 const PAGE_SIZE = 20;
 const THUMBNAIL_SIZES = ['500', '250', '100'];
 
-const fileQueue = new Bull('fileQueue');
+// Created lazily rather than at import time: building the Bull queue opens
+// Redis connections, and doing that on module load means merely importing this
+// controller (e.g. from a test that pulls in the app) spins up Redis clients.
+let fileQueue = null;
+const getFileQueue = () => {
+  if (!fileQueue) fileQueue = new Bull('fileQueue');
+  return fileQueue;
+};
 
 // Shapes a stored document for the API: _id becomes id, localPath stays private.
 const formatFile = (doc) => ({
@@ -88,7 +95,7 @@ class FilesController {
     const result = await files.insertOne(doc);
 
     if (type === 'image') {
-      await fileQueue.add({
+      await getFileQueue().add({
         userId: user._id.toString(),
         fileId: result.insertedId.toString(),
       });
@@ -128,10 +135,14 @@ class FilesController {
     else if (ObjectId.isValid(parentId)) parentMatch = new ObjectId(parentId);
     else return res.status(200).json([]);
 
+    // maxTimeMS bounds the cursor's server-side execution. serverSelectionTimeoutMS
+    // only covers picking a server, not running the query -- and this listing is
+    // the one endpoint that iterates a cursor, so it is the one that can hang here.
     const files = await dbClient.db.collection('files')
       .find({ userId: user._id, parentId: parentMatch })
       .skip(page * PAGE_SIZE)
       .limit(PAGE_SIZE)
+      .maxTimeMS(5000)
       .toArray();
 
     return res.status(200).json(files.map(formatFile));
