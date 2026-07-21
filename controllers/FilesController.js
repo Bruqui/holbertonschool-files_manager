@@ -4,8 +4,8 @@ import Bull from 'bull';
 import mime from 'mime-types';
 import { v4 as uuidv4 } from 'uuid';
 import { ObjectId } from 'mongodb';
-import dbClient from '../utils/db.mjs';
-import getUserFromToken from '../utils/auth.mjs';
+import dbClient from '../utils/db';
+import getUserFromToken from '../utils/auth';
 
 const ACCEPTED_TYPES = ['folder', 'file', 'image'];
 const FOLDER_PATH = process.env.FOLDER_PATH || '/tmp/files_manager';

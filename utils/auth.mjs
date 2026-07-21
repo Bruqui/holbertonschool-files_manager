@@ -1,6 +1,6 @@
 import mongodb from 'mongodb';
-import dbClient from './db.mjs';
-import redisClient from './redis.mjs';
+import dbClient from './db';
+import redisClient from './redis';
 
 const { ObjectId } = mongodb;
 

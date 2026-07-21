@@ -2,7 +2,7 @@ import { promises as fs } from 'fs';
 import Bull from 'bull';
 import imageThumbnail from 'image-thumbnail';
 import { ObjectId } from 'mongodb';
-import dbClient from './utils/db.mjs';
+import dbClient from './utils/db';
 
 const fileQueue = new Bull('fileQueue');
 const THUMBNAIL_WIDTHS = [500, 250, 100];

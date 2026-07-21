@@ -1,6 +1,6 @@
 import sha1 from 'sha1';
-import dbClient from '../utils/db.mjs';
-import getUserFromToken from '../utils/auth.mjs';
+import dbClient from '../utils/db';
+import getUserFromToken from '../utils/auth';
 
 class UsersController {
   static async postNew(req, res) {
