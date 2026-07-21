@@ -128,11 +128,11 @@ class FilesController {
     else if (ObjectId.isValid(parentId)) parentMatch = new ObjectId(parentId);
     else return res.status(200).json([]);
 
-    const files = await dbClient.db.collection('files').aggregate([
-      { $match: { userId: user._id, parentId: parentMatch } },
-      { $skip: page * PAGE_SIZE },
-      { $limit: PAGE_SIZE },
-    ]).toArray();
+    const files = await dbClient.db.collection('files')
+      .find({ userId: user._id, parentId: parentMatch })
+      .skip(page * PAGE_SIZE)
+      .limit(PAGE_SIZE)
+      .toArray();
 
     return res.status(200).json(files.map(formatFile));
   }
