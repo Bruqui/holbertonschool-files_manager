@@ -11,6 +11,10 @@ class DBClient {
     this.db = null;
     this.client = new MongoClient(`mongodb://${HOST}:${PORT}`, {
       useUnifiedTopology: true,
+      // Default is 30s: an operation that cannot reach a server would hang the
+      // request for 30s (the exact mocha timeout seen). Fail fast instead so
+      // the route wrapper can answer with a 500 rather than hanging.
+      serverSelectionTimeoutMS: 5000,
     });
     // Kept so callers (server.js, worker.js) can await a ready connection
     // before serving requests -- otherwise a query can hit a null `db` and
